@@ -207,6 +207,56 @@ contract NonReentrantTest is BaseOrderTest {
         }
     }
 
+    function testLastConsiderationItemTransferOnBasicOrderFulfillmentNotBypassableByOveridingAdditionalRecipientsLengthData(
+        Context memory context
+    ) external {
+        (
+            Order memory myOrder,
+            bytes memory signature,
+            BasicOrderParameters memory myBasicOrderParameters
+        ) = prepareOrderForAspynTest(1);
+        ConsiderationInterface consideration = context.consideration;
+        Order[] memory myOrders = new Order[](1);
+        myOrders[0] = myOrder;
+        consideration.validate(myOrders);
+    }
+
+    // Copy-paste of prepareOrder modified for Aspyn test
+    function prepareOrderForAspynTest(uint256 tokenId)
+        internal
+        returns (
+            Order memory _order,
+            bytes memory _signature,
+            BasicOrderParameters memory _basicOrderParameters
+        )
+    {
+        test1155_1.mint(address(this), tokenId, 10);
+
+        _configureERC1155OfferItem(tokenId, 10);
+        _configureEthConsiderationItem(payable(this), 10);
+        _configureEthConsiderationItem(payable(0), 10);
+        _configureEthConsiderationItem(alice, 10);
+        uint256 nonce = currentConsideration.getNonce(address(this));
+
+        OrderParameters memory _orderParameters = getOrderParameters(
+            payable(this),
+            OrderType.FULL_OPEN
+        );
+        OrderComponents memory _orderComponents = toOrderComponents(
+            _orderParameters,
+            nonce
+        );
+
+        bytes32 orderHash = currentConsideration.getOrderHash(_orderComponents);
+
+        _signature = signOrder(currentConsideration, alicePk, orderHash);
+        _order = Order(_orderParameters, _signature);
+        _basicOrderParameters = toBasicOrderParameters(
+            _order,
+            BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN
+        );
+    }
+
     function _reentryPoint(uint256 tokenId) public {
         if (reentryPoint == ReentryPoint.Cancel) {
             prepareBasicOrder(tokenId);
