@@ -249,7 +249,7 @@ contract NonReentrantTest is BaseOrderTest {
                 considerationAddress,
                 0,
                 x, // Inputs are stored at location x
-                0x44, // TODO what is input length? Is the length of fulfillBasicOrderCalldata
+                0x44, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
                 x, // Store output over input
                 0x20
             )
