@@ -207,18 +207,56 @@ contract NonReentrantTest is BaseOrderTest {
         }
     }
 
-    function testLastConsiderationItemTransferOnBasicOrderFulfillmentNotBypassableByOveridingAdditionalRecipientsLengthData(
-        Context memory context
-    ) external {
+    // TODO rename
+    // TODO move out of NonReentrant
+    // TODO add comments
+    // TODO get working
+    function testAspynLow5(Context memory context) external {
+        // Create basic order
         (
             Order memory myOrder,
-            bytes memory signature,
-            BasicOrderParameters memory myBasicOrderParameters
+            bytes memory _signature,
+            BasicOrderParameters memory _basicOrderParameters
         ) = prepareOrderForAspynTest(1);
         ConsiderationInterface consideration = context.consideration;
         Order[] memory myOrders = new Order[](1);
         myOrders[0] = myOrder;
+
+        // Validate the order
         consideration.validate(myOrders);
+
+        // Get the calldata
+        bytes4 fulfillBasicOrderSignature = consideration
+            .fulfillBasicOrder
+            .selector;
+        bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
+            fulfillBasicOrderSignature,
+            _basicOrderParameters
+        );
+        address considerationAddress = address(consideration);
+        assembly {
+            // TODO Get the length from the calldata
+            // TODO Store the length - 1 in the calldata
+
+            // Store the function calldata
+            let x := mload(0x40) // Find empty storage location using "free memory pointer"
+            mstore(x, fulfillBasicOrderSignature) // Place signature at begining of empty storage
+            mstore(add(x, 0x04), fulfillBasicOrderCalldata) //Place first argument directly next to signature
+
+            // Call fulfillBasicOrders
+            let success := call(
+                gas(),
+                considerationAddress,
+                0,
+                x, // Inputs are stored at location x
+                0x44, // TODO what is input length? Is the length of fulfillBasicOrderCalldata
+                x, // Store output over input
+                0x20
+            )
+
+            let c := mload(x) //Assign output value to c
+            mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
+        }
     }
 
     // Copy-paste of prepareOrder modified for Aspyn test
