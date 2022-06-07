@@ -218,6 +218,22 @@ contract NonReentrantTest is BaseOrderTest {
             bytes memory _signature,
             BasicOrderParameters memory _basicOrderParameters
         ) = prepareOrderForAspynTest(1);
+
+        _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
+            5
+        );
+
+        for (
+            uint256 i = 0;
+            i < _basicOrderParameters.additionalRecipients.length;
+            i++
+        ) {
+            _basicOrderParameters.additionalRecipients[i].recipient = payable(
+                address(0)
+            );
+            _basicOrderParameters.additionalRecipients[i].amount = 1;
+        }
+
         ConsiderationInterface consideration = context.consideration;
         Order[] memory myOrders = new Order[](1);
         myOrders[0] = myOrder;
@@ -235,8 +251,16 @@ contract NonReentrantTest is BaseOrderTest {
         );
         address considerationAddress = address(consideration);
         assembly {
-            // TODO Get the length from the calldata
-            // TODO Store the length - 1 in the calldata
+            // Get the length from the calldata and store the
+            // length - 1 in the calldata
+            let additionalRecipientsLengthOffset := add(
+                fulfillBasicOrderCalldata,
+                0x264
+            )
+            mstore(
+                additionalRecipientsLengthOffset,
+                sub(mload(additionalRecipientsLengthOffset), 1)
+            )
 
             // Store the function calldata
             let x := mload(0x40) // Find empty storage location using "free memory pointer"
