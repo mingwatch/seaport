@@ -3,6 +3,7 @@ pragma solidity >=0.8.13;
 
 import { OrderType, BasicOrderType, ItemType, Side } from "../../contracts/lib/ConsiderationEnums.sol";
 import { AdditionalRecipient } from "../../contracts/lib/ConsiderationStructs.sol";
+import { AdditionalRecipients_size, BasicOrder_additionalRecipients_length_cdPtr } from "../../contracts/lib/ConsiderationConstants.sol";
 import { ConsiderationInterface } from "../../contracts/interfaces/ConsiderationInterface.sol";
 import { AdditionalRecipient, Fulfillment, OfferItem, ConsiderationItem, FulfillmentComponent, OrderComponents, AdvancedOrder, BasicOrderParameters, Order } from "../../contracts/lib/ConsiderationStructs.sol";
 import { BaseOrderTest } from "./utils/BaseOrderTest.sol";
@@ -219,10 +220,10 @@ contract NonReentrantTest is BaseOrderTest {
             BasicOrderParameters memory _basicOrderParameters
         ) = prepareOrderForAspynTest(1);
 
+        // Add additional recipients
         _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
             5
         );
-
         for (
             uint256 i = 0;
             i < _basicOrderParameters.additionalRecipients.length;
@@ -267,13 +268,25 @@ contract NonReentrantTest is BaseOrderTest {
             mstore(x, fulfillBasicOrderSignature) // Place signature at begining of empty storage
             mstore(add(x, 0x04), fulfillBasicOrderCalldata) //Place first argument directly next to signature
 
+            // Store the input size, which is the length of the calldata not including
+            // the dynamic additional recipients array + the additional recipients array size
+            let inputSize := add(
+                BasicOrder_additionalRecipients_length_cdPtr,
+                mul(
+                    // Additional recipients length at calldata 0x264.
+                    mload(additionalRecipientsLengthOffset),
+                    // Each additional recipient has a length of 0x40.
+                    AdditionalRecipients_size
+                )
+            )
+
             // Call fulfillBasicOrders
             let success := call(
                 gas(),
                 considerationAddress,
                 0,
                 x, // Inputs are stored at location x
-                0x44, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
+                inputSize, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
                 x, // Store output over input
                 0x20
             )
@@ -296,7 +309,7 @@ contract NonReentrantTest is BaseOrderTest {
 
         _configureERC1155OfferItem(tokenId, 10);
         _configureEthConsiderationItem(payable(this), 10);
-        _configureEthConsiderationItem(payable(0), 10);
+        // _configureEthConsiderationItem(payable(0), 10);
         _configureEthConsiderationItem(alice, 10);
         uint256 nonce = currentConsideration.getNonce(address(this));
 
