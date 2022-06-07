@@ -218,7 +218,6 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         // Create basic order
         (
             Order memory myOrder,
-            bytes memory _signature,
             BasicOrderParameters memory _basicOrderParameters
         ) = prepareOrderForAspynTest(1);
         // Add additional recipients
@@ -233,7 +232,6 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             _basicOrderParameters.additionalRecipients[i].recipient = alice;
             _basicOrderParameters.additionalRecipients[i].amount = 1;
         }
-        // ConsiderationInterface consideration = context.consideration;
         Order[] memory myOrders = new Order[](1);
         myOrders[0] = myOrder;
         // Validate the order
@@ -254,7 +252,6 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             assembly {
                 // Get the length from the calldata and store the
                 // length - 1 in the calldata
-
                 let additionalRecipientsLengthOffset := add(
                     fulfillBasicOrderCalldata,
                     0x264
@@ -267,15 +264,19 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         }
 
         assembly {
-            // Find empty storage location using "free memory pointer"
             // Store the function calldata
             // Call fulfillBasicOrders
             success := call(
                 gas(),
                 considerationAddress,
                 0,
+                // The fn signature and calldata starts after the
+                // first OneWord bytes, as those initial bytes just
+                // contain the length of fulfillBasicOrderCalldata
                 add(fulfillBasicOrderCalldata, OneWord),
                 calldataLength,
+                // Store output at empty storage location,
+                // identified using "free memory pointer".
                 mload(0x40),
                 OneWord
             )
@@ -299,7 +300,6 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         internal
         returns (
             Order memory _order,
-            bytes memory _signature,
             BasicOrderParameters memory _basicOrderParameters
         )
     {
@@ -323,7 +323,11 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
 
         bytes32 orderHash = currentConsideration.getOrderHash(_orderComponents);
 
-        _signature = signOrder(currentConsideration, alicePk, orderHash);
+        bytes memory _signature = signOrder(
+            currentConsideration,
+            alicePk,
+            orderHash
+        );
         _order = Order(_orderParameters, _signature);
         _basicOrderParameters = toBasicOrderParameters(
             _order,
