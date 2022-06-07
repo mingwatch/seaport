@@ -252,39 +252,19 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         uint256 calldataLength = fulfillBasicOrderCalldata.length;
         bool success;
 
-        // if (shouldSubtract1) {
-        //     assembly {
-        //         // Get the length from the calldata and store the
-        //         // length - 1 in the calldata
-
-        //         let additionalRecipientsLengthOffset := add(
-        //             fulfillBasicOrderCalldata,
-        //             0x264
-        //         )
-        //         mstore(
-        //             additionalRecipientsLengthOffset,
-        //             sub(mload(additionalRecipientsLengthOffset), 1)
-        //         )
-        //     }
-        // }
-
         assembly {
             // Find empty storage location using "free memory pointer"
-            let x := mload(0x40)
             // Store the function calldata
-            mstore(x, fulfillBasicOrderCalldata)
             // Call fulfillBasicOrders
             success := call(
                 gas(),
                 considerationAddress,
                 0,
-                x, // Inputs are stored at location x
+                add(fulfillBasicOrderCalldata, OneWord),
                 calldataLength,
-                x, // Store output over input
+                mload(0x40),
                 OneWord
             )
-            let c := mload(x) //Assign output value to c
-            // mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
         }
 
         // if (shouldSubtract1) {
