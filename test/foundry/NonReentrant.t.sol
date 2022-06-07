@@ -261,8 +261,7 @@ contract NonReentrantTest is BaseOrderTest {
             )
             // Store the function calldata
             let x := mload(0x40) // Find empty storage location using "free memory pointer"
-            mstore(x, fulfillBasicOrderSignature) // Place signature at begining of empty storage
-            mstore(add(x, 0x04), fulfillBasicOrderCalldata) //Place first argument directly next to signature
+            mstore(x, fulfillBasicOrderCalldata) //Place first argument directly next to signature
             // Store the input size, which is the length of the calldata not including
             // the dynamic additional recipients array + the additional recipients array size
             let inputSize := add(
