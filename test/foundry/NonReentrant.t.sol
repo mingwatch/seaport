@@ -213,7 +213,7 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
     // TODO move out of NonReentrant
     // TODO add comments
     // TODO get working
-    function testAspynLow5() public {
+    function testAspynLow5(bool shouldSubtract1) public {
         currentConsideration = consideration;
         // Create basic order
         (
@@ -230,9 +230,7 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             i < _basicOrderParameters.additionalRecipients.length;
             i++
         ) {
-            _basicOrderParameters.additionalRecipients[i].recipient = payable(
-                address(0)
-            );
+            _basicOrderParameters.additionalRecipients[i].recipient = alice;
             _basicOrderParameters.additionalRecipients[i].amount = 1;
         }
         // ConsiderationInterface consideration = context.consideration;
@@ -252,6 +250,22 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         uint256 calldataLength = fulfillBasicOrderCalldata.length;
         bool success;
 
+        if (shouldSubtract1) {
+            assembly {
+                // Get the length from the calldata and store the
+                // length - 1 in the calldata
+
+                let additionalRecipientsLengthOffset := add(
+                    fulfillBasicOrderCalldata,
+                    0x264
+                )
+                mstore(
+                    additionalRecipientsLengthOffset,
+                    sub(mload(additionalRecipientsLengthOffset), 1)
+                )
+            }
+        }
+
         assembly {
             // Find empty storage location using "free memory pointer"
             // Store the function calldata
@@ -267,9 +281,9 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             )
         }
 
-        // if (shouldSubtract1) {
-        //     vm.expectRevert();
-        // }
+        if (shouldSubtract1) {
+            vm.expectRevert();
+        }
         // If the call fails...
         if (!success) {
             // Revert and pass the revert reason along if one was returned.
@@ -292,9 +306,10 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         test1155_1.mint(address(this), tokenId, 10);
 
         _configureERC1155OfferItem(tokenId, 10);
-        _configureEthConsiderationItem(payable(this), 10);
+        // _configureEthConsiderationItem(payable(this), 10);
         // _configureEthConsiderationItem(payable(0), 10);
-        _configureEthConsiderationItem(alice, 10);
+        // _configureEthConsiderationItem(alice, 10);
+        _configureErc20ConsiderationItem(alice, 10);
         uint256 nonce = currentConsideration.getNonce(address(this));
 
         OrderParameters memory _orderParameters = getOrderParameters(
