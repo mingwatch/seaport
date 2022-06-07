@@ -238,7 +238,7 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
 
         _configureERC1155OfferItem(tokenId, 10);
         _configureErc20ConsiderationItem(alice, 10);
-        uint256 nonce = consideration.getNonce(address(this));
+        uint256 nonce = consideration.getCounter(address(this));
 
         OrderParameters memory _orderParameters = getOrderParameters(
             payable(this),
