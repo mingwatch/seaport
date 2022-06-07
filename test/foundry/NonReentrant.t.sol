@@ -209,28 +209,33 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         }
     }
 
-    // TODO rename
     // TODO move out of NonReentrant
     // TODO add comments
-    // TODO get working
-    function testAspynLow5(bool shouldSubtract1) public {
+    function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
+        uint256 fuzzTotalRecipients,
+        uint256 numToSub
+    ) public {
+        uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
+        vm.assume(numToSub <= totalRecipients);
+        bool overwriteTotalRecipientsLength = numToSub > 0;
         currentConsideration = consideration;
         // Create basic order
         (
             Order memory myOrder,
             BasicOrderParameters memory _basicOrderParameters
-        ) = prepareOrderForAspynTest(1);
+        ) = prepareBasicOrderAndOrderParameters(1);
         // Add additional recipients
         _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
-            5
+            totalRecipients
         );
         for (
             uint256 i = 0;
             i < _basicOrderParameters.additionalRecipients.length;
             i++
         ) {
-            _basicOrderParameters.additionalRecipients[i].recipient = alice;
-            _basicOrderParameters.additionalRecipients[i].amount = 1;
+            _basicOrderParameters.additionalRecipients[
+                i
+            ] = AdditionalRecipient({ recipient: alice, amount: 1 });
         }
         Order[] memory myOrders = new Order[](1);
         myOrders[0] = myOrder;
@@ -244,11 +249,8 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             fulfillBasicOrderSignature,
             _basicOrderParameters
         );
-        address considerationAddress = address(consideration);
-        uint256 calldataLength = fulfillBasicOrderCalldata.length;
-        bool success;
 
-        if (shouldSubtract1) {
+        if (overwriteTotalRecipientsLength) {
             assembly {
                 // Get the length from the calldata and store the
                 // length - 1 in the calldata
@@ -256,12 +258,19 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
                     fulfillBasicOrderCalldata,
                     0x264
                 )
+                let additionalRecipientsLength := mload(
+                    additionalRecipientsLengthOffset
+                )
                 mstore(
                     additionalRecipientsLengthOffset,
-                    sub(mload(additionalRecipientsLengthOffset), 1)
+                    sub(additionalRecipientsLength, numToSub)
                 )
             }
         }
+
+        address considerationAddress = address(consideration);
+        uint256 calldataLength = fulfillBasicOrderCalldata.length;
+        bool success;
 
         assembly {
             // Store the function calldata
@@ -282,7 +291,8 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
             )
         }
 
-        if (shouldSubtract1) {
+        if (overwriteTotalRecipientsLength) {
+            // Expect a revert if the additional recipients length is too small (e.g. 1 was subtracted).
             vm.expectRevert();
         }
         // If the call fails...
@@ -296,7 +306,7 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
     }
 
     // Copy-paste of prepareOrder modified for Aspyn test
-    function prepareOrderForAspynTest(uint256 tokenId)
+    function prepareBasicOrderAndOrderParameters(uint256 tokenId)
         internal
         returns (
             Order memory _order,
@@ -306,9 +316,6 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         test1155_1.mint(address(this), tokenId, 10);
 
         _configureERC1155OfferItem(tokenId, 10);
-        // _configureEthConsiderationItem(payable(this), 10);
-        // _configureEthConsiderationItem(payable(0), 10);
-        // _configureEthConsiderationItem(alice, 10);
         _configureErc20ConsiderationItem(alice, 10);
         uint256 nonce = currentConsideration.getNonce(address(this));
 
