@@ -213,87 +213,80 @@ contract NonReentrantTest is BaseOrderTest {
     // TODO add comments
     // TODO get working
     function testAspynLow5(Context memory context) external {
+        // currentConsideration = consideration;
         // Create basic order
-        (
-            Order memory myOrder,
-            bytes memory _signature,
-            BasicOrderParameters memory _basicOrderParameters
-        ) = prepareOrderForAspynTest(1);
-
+        // (
+        //     Order memory myOrder,
+        //     bytes memory _signature,
+        //     BasicOrderParameters memory _basicOrderParameters
+        // ) = prepareOrderForAspynTest(1);
         // Add additional recipients
-        _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
-            5
-        );
-        for (
-            uint256 i = 0;
-            i < _basicOrderParameters.additionalRecipients.length;
-            i++
-        ) {
-            _basicOrderParameters.additionalRecipients[i].recipient = payable(
-                address(0)
-            );
-            _basicOrderParameters.additionalRecipients[i].amount = 1;
-        }
-
-        ConsiderationInterface consideration = context.consideration;
-        Order[] memory myOrders = new Order[](1);
-        myOrders[0] = myOrder;
-
-        // Validate the order
-        consideration.validate(myOrders);
-
-        // Get the calldata
-        bytes4 fulfillBasicOrderSignature = consideration
-            .fulfillBasicOrder
-            .selector;
-        bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
-            fulfillBasicOrderSignature,
-            _basicOrderParameters
-        );
-        address considerationAddress = address(consideration);
-        assembly {
-            // Get the length from the calldata and store the
-            // length - 1 in the calldata
-            let additionalRecipientsLengthOffset := add(
-                fulfillBasicOrderCalldata,
-                0x264
-            )
-            mstore(
-                additionalRecipientsLengthOffset,
-                sub(mload(additionalRecipientsLengthOffset), 1)
-            )
-
-            // Store the function calldata
-            let x := mload(0x40) // Find empty storage location using "free memory pointer"
-            mstore(x, fulfillBasicOrderSignature) // Place signature at begining of empty storage
-            mstore(add(x, 0x04), fulfillBasicOrderCalldata) //Place first argument directly next to signature
-
-            // Store the input size, which is the length of the calldata not including
-            // the dynamic additional recipients array + the additional recipients array size
-            let inputSize := add(
-                BasicOrder_additionalRecipients_length_cdPtr,
-                mul(
-                    // Additional recipients length at calldata 0x264.
-                    mload(additionalRecipientsLengthOffset),
-                    // Each additional recipient has a length of 0x40.
-                    AdditionalRecipients_size
-                )
-            )
-
-            // Call fulfillBasicOrders
-            let success := call(
-                gas(),
-                considerationAddress,
-                0,
-                x, // Inputs are stored at location x
-                inputSize, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
-                x, // Store output over input
-                0x20
-            )
-
-            let c := mload(x) //Assign output value to c
-            mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
-        }
+        // _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
+        //     5
+        // );
+        // for (
+        //     uint256 i = 0;
+        //     i < _basicOrderParameters.additionalRecipients.length;
+        //     i++
+        // ) {
+        //     _basicOrderParameters.additionalRecipients[i].recipient = payable(
+        //         address(0)
+        //     );
+        //     _basicOrderParameters.additionalRecipients[i].amount = 1;
+        // }
+        // // ConsiderationInterface consideration = context.consideration;
+        // Order[] memory myOrders = new Order[](1);
+        // myOrders[0] = myOrder;
+        // // Validate the order
+        // consideration.validate(myOrders);
+        // // Get the calldata
+        // bytes4 fulfillBasicOrderSignature = consideration
+        //     .fulfillBasicOrder
+        //     .selector;
+        // bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
+        //     fulfillBasicOrderSignature,
+        //     _basicOrderParameters
+        // );
+        // address considerationAddress = address(consideration);
+        // assembly {
+        //     // Get the length from the calldata and store the
+        //     // length - 1 in the calldata
+        //     let additionalRecipientsLengthOffset := add(
+        //         fulfillBasicOrderCalldata,
+        //         0x264
+        //     )
+        //     mstore(
+        //         additionalRecipientsLengthOffset,
+        //         sub(mload(additionalRecipientsLengthOffset), 1)
+        //     )
+        //     // Store the function calldata
+        //     let x := mload(0x40) // Find empty storage location using "free memory pointer"
+        //     mstore(x, fulfillBasicOrderSignature) // Place signature at begining of empty storage
+        //     mstore(add(x, 0x04), fulfillBasicOrderCalldata) //Place first argument directly next to signature
+        //     // Store the input size, which is the length of the calldata not including
+        //     // the dynamic additional recipients array + the additional recipients array size
+        //     let inputSize := add(
+        //         BasicOrder_additionalRecipients_length_cdPtr,
+        //         mul(
+        //             // Additional recipients length at calldata 0x264.
+        //             mload(additionalRecipientsLengthOffset),
+        //             // Each additional recipient has a length of 0x40.
+        //             AdditionalRecipients_size
+        //         )
+        //     )
+        //     // Call fulfillBasicOrders
+        //     let success := call(
+        //         gas(),
+        //         considerationAddress,
+        //         0,
+        //         x, // Inputs are stored at location x
+        //         inputSize, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
+        //         x, // Store output over input
+        //         0x20
+        //     )
+        //     let c := mload(x) //Assign output value to c
+        //     mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
+        // }
     }
 
     // Copy-paste of prepareOrder modified for Aspyn test
