@@ -123,12 +123,14 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
     }
 
     function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
-        uint256 fuzzTotalRecipients,
-        uint256 numToSub
+        uint256 totalRecipients,
+        uint256 amountToSubtractFromTotalRecipients
     ) public {
-        uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
-        vm.assume(numToSub <= totalRecipients);
-        bool overwriteTotalRecipientsLength = numToSub > 0;
+        // uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
+        vm.assume(totalRecipients >= 0 && totalRecipients <= 200);
+        vm.assume(amountToSubtractFromTotalRecipients <= totalRecipients);
+        bool overwriteTotalRecipientsLength = amountToSubtractFromTotalRecipients >
+                0;
 
         // Create basic order
         (
@@ -166,7 +168,9 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
 
         if (overwriteTotalRecipientsLength) {
             // Get the additional recipients length from the calldata and
-            // store the length - 1 in the calldata.
+            // store the length - amountToSubtractFromTotalRecipients in the calldata
+            // so that the length value does _not_ accurately represent the actual
+            // total recipients length.
             assembly {
                 let additionalRecipientsLengthOffset := add(
                     fulfillBasicOrderCalldata,
@@ -177,7 +181,10 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
                 )
                 mstore(
                     additionalRecipientsLengthOffset,
-                    sub(additionalRecipientsLength, numToSub)
+                    sub(
+                        additionalRecipientsLength,
+                        amountToSubtractFromTotalRecipients
+                    )
                 )
             }
         }
