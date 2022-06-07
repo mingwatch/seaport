@@ -3,14 +3,15 @@ pragma solidity >=0.8.13;
 
 import { OrderType, BasicOrderType, ItemType, Side } from "../../contracts/lib/ConsiderationEnums.sol";
 import { AdditionalRecipient } from "../../contracts/lib/ConsiderationStructs.sol";
-import { AdditionalRecipients_size, BasicOrder_additionalRecipients_length_cdPtr } from "../../contracts/lib/ConsiderationConstants.sol";
+import { LowLevelHelpers } from "../../contracts/lib/LowLevelHelpers.sol";
+import { AdditionalRecipients_size, BasicOrder_additionalRecipients_length_cdPtr, OneWord } from "../../contracts/lib/ConsiderationConstants.sol";
 import { ConsiderationInterface } from "../../contracts/interfaces/ConsiderationInterface.sol";
 import { AdditionalRecipient, Fulfillment, OfferItem, ConsiderationItem, FulfillmentComponent, OrderComponents, AdvancedOrder, BasicOrderParameters, Order } from "../../contracts/lib/ConsiderationStructs.sol";
 import { BaseOrderTest } from "./utils/BaseOrderTest.sol";
 import { EntryPoint, ReentryPoint } from "./utils/reentrancy/ReentrantEnums.sol";
 import { FulfillBasicOrderParameters, FulfillOrderParameters, OrderParameters, FulfillAdvancedOrderParameters, FulfillAvailableOrdersParameters, FulfillAvailableAdvancedOrdersParameters, MatchOrdersParameters, MatchAdvancedOrdersParameters, CancelParameters, ValidateParameters, ReentrantCallParameters, CriteriaResolver } from "./utils/reentrancy/ReentrantStructs.sol";
 
-contract NonReentrantTest is BaseOrderTest {
+contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
     BasicOrderParameters basicOrderParameters;
     OrderComponents orderComponents;
     AdditionalRecipient recipient;
@@ -248,43 +249,54 @@ contract NonReentrantTest is BaseOrderTest {
             _basicOrderParameters
         );
         address considerationAddress = address(consideration);
+        uint256 calldataLength = fulfillBasicOrderCalldata.length;
+        bool success;
+
+        // if (shouldSubtract1) {
+        //     assembly {
+        //         // Get the length from the calldata and store the
+        //         // length - 1 in the calldata
+
+        //         let additionalRecipientsLengthOffset := add(
+        //             fulfillBasicOrderCalldata,
+        //             0x264
+        //         )
+        //         mstore(
+        //             additionalRecipientsLengthOffset,
+        //             sub(mload(additionalRecipientsLengthOffset), 1)
+        //         )
+        //     }
+        // }
+
         assembly {
-            // Get the length from the calldata and store the
-            // length - 1 in the calldata
-            let additionalRecipientsLengthOffset := add(
-                fulfillBasicOrderCalldata,
-                0x264
-            )
-            mstore(
-                additionalRecipientsLengthOffset,
-                sub(mload(additionalRecipientsLengthOffset), 1)
-            )
+            // Find empty storage location using "free memory pointer"
+            let x := mload(0x40)
             // Store the function calldata
-            let x := mload(0x40) // Find empty storage location using "free memory pointer"
-            mstore(x, fulfillBasicOrderCalldata) //Place first argument directly next to signature
-            // Store the input size, which is the length of the calldata not including
-            // the dynamic additional recipients array + the additional recipients array size
-            let inputSize := add(
-                BasicOrder_additionalRecipients_length_cdPtr,
-                mul(
-                    // Additional recipients length at calldata 0x264.
-                    mload(additionalRecipientsLengthOffset),
-                    // Each additional recipient has a length of 0x40.
-                    AdditionalRecipients_size
-                )
-            )
+            mstore(x, fulfillBasicOrderCalldata)
             // Call fulfillBasicOrders
-            let success := call(
+            success := call(
                 gas(),
                 considerationAddress,
                 0,
                 x, // Inputs are stored at location x
-                inputSize, // TODO what is input length? Is it the length of fulfillBasicOrderCalldata?
+                calldataLength,
                 x, // Store output over input
-                0x20
+                OneWord
             )
             let c := mload(x) //Assign output value to c
-            mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
+            // mstore(0x40, add(x, 0x44)) // Set storage pointer to empty space
+        }
+
+        // if (shouldSubtract1) {
+        //     vm.expectRevert();
+        // }
+        // If the call fails...
+        if (!success) {
+            // Revert and pass the revert reason along if one was returned.
+            _revertWithReasonIfOneIsReturned();
+
+            // Otherwise, revert with a generic error message.
+            revert();
         }
     }
 
