@@ -20,8 +20,6 @@ contract NonReentrantTest is BaseOrderTest {
     bool reentered;
     bool shouldReenter;
 
-    // uint256 globalSalt;
-
     /**
      * @dev Foundry fuzzes enums as uints, so we need to manually fuzz on uints and use vm.assume
      * to filter out invalid values

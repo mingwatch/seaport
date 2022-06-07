@@ -211,13 +211,16 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
             )
         }
 
+        // If overwriteTotalRecipientsLength is True, the call should
+        // have failed (success should be False) and if overwriteTotalRecipientsLength is False,
+        // the call should have succeeded (success should be True).
+        assertEq(!overwriteTotalRecipientsLength, success);
+
         if (overwriteTotalRecipientsLength) {
             // Expect a revert if the additional recipients length is too small (e.g. 1 was subtracted).
             vm.expectRevert();
         }
-        // If the call fails...
-        // (which should only occur here if
-        // overwriteTotalRecipientsLength is True)
+
         if (!success) {
             // Revert and pass the revert reason along if one was returned.
             _revertWithReasonIfOneIsReturned();
