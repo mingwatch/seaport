@@ -122,8 +122,6 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         );
     }
 
-    // TODO move out of NonReentrant
-    // TODO add comments
     function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
         uint256 fuzzTotalRecipients,
         uint256 numToSub
@@ -131,12 +129,13 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
         vm.assume(numToSub <= totalRecipients);
         bool overwriteTotalRecipientsLength = numToSub > 0;
-        // currentConsideration = consideration;
+
         // Create basic order
         (
             Order memory myOrder,
             BasicOrderParameters memory _basicOrderParameters
         ) = prepareBasicOrderAndOrderParameters(1);
+
         // Add additional recipients
         _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
             totalRecipients
@@ -150,11 +149,13 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
                 i
             ] = AdditionalRecipient({ recipient: alice, amount: 1 });
         }
+
+        // Validate the order.
         Order[] memory myOrders = new Order[](1);
         myOrders[0] = myOrder;
-        // Validate the order
         consideration.validate(myOrders);
-        // Get the calldata
+
+        // Get the calldata that will be passed into fulfillBasicOrder.
         bytes4 fulfillBasicOrderSignature = consideration
             .fulfillBasicOrder
             .selector;
@@ -164,9 +165,9 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         );
 
         if (overwriteTotalRecipientsLength) {
+            // Get the additional recipients length from the calldata and
+            // store the length - 1 in the calldata.
             assembly {
-                // Get the length from the calldata and store the
-                // length - 1 in the calldata
                 let additionalRecipientsLengthOffset := add(
                     fulfillBasicOrderCalldata,
                     0x264
@@ -186,7 +187,6 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         bool success;
 
         assembly {
-            // Store the function calldata
             // Call fulfillBasicOrders
             success := call(
                 gas(),
@@ -209,6 +209,8 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
             vm.expectRevert();
         }
         // If the call fails...
+        // (which should only occur here if
+        // overwriteTotalRecipientsLength is True)
         if (!success) {
             // Revert and pass the revert reason along if one was returned.
             _revertWithReasonIfOneIsReturned();
@@ -218,7 +220,6 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         }
     }
 
-    // Copy-paste of prepareOrder modified for Aspyn test
     function prepareBasicOrderAndOrderParameters(uint256 tokenId)
         internal
         returns (
