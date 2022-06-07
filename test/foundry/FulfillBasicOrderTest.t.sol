@@ -3,11 +3,14 @@
 
 pragma solidity >=0.8.13;
 
+import { OneWord } from "../../contracts/lib/ConsiderationConstants.sol";
 import { OrderType, BasicOrderType, ItemType, Side } from "../../contracts/lib/ConsiderationEnums.sol";
-import { AdditionalRecipient } from "../../contracts/lib/ConsiderationStructs.sol";
+import { AdditionalRecipient, Order } from "../../contracts/lib/ConsiderationStructs.sol";
 import { ConsiderationInterface } from "../../contracts/interfaces/ConsiderationInterface.sol";
 import { OfferItem, ConsiderationItem, OrderComponents, BasicOrderParameters } from "../../contracts/lib/ConsiderationStructs.sol";
 import { BaseOrderTest } from "./utils/BaseOrderTest.sol";
+
+import { LowLevelHelpers } from "../../contracts/lib/LowLevelHelpers.sol";
 
 import { TestERC721 } from "../../contracts/test/TestERC721.sol";
 
@@ -16,7 +19,9 @@ import { TestERC1155 } from "../../contracts/test/TestERC1155.sol";
 import { TestERC20 } from "../../contracts/test/TestERC20.sol";
 import { ArithmeticUtil } from "./utils/ArithmeticUtil.sol";
 
-contract FulfillBasicOrderTest is BaseOrderTest {
+import { OrderParameters } from "./utils/reentrancy/ReentrantStructs.sol";
+
+contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
     using ArithmeticUtil for uint128;
 
     BasicOrderParameters basicOrderParameters;
@@ -114,6 +119,135 @@ contract FulfillBasicOrderTest is BaseOrderTest {
         test(
             this.basicErc20To1155,
             Context(referenceConsideration, inputs, tokenAmount)
+        );
+    }
+
+    // TODO move out of NonReentrant
+    // TODO add comments
+    function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
+        uint256 fuzzTotalRecipients,
+        uint256 numToSub
+    ) public {
+        uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
+        vm.assume(numToSub <= totalRecipients);
+        bool overwriteTotalRecipientsLength = numToSub > 0;
+        // currentConsideration = consideration;
+        // Create basic order
+        (
+            Order memory myOrder,
+            BasicOrderParameters memory _basicOrderParameters
+        ) = prepareBasicOrderAndOrderParameters(1);
+        // Add additional recipients
+        _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
+            totalRecipients
+        );
+        for (
+            uint256 i = 0;
+            i < _basicOrderParameters.additionalRecipients.length;
+            i++
+        ) {
+            _basicOrderParameters.additionalRecipients[
+                i
+            ] = AdditionalRecipient({ recipient: alice, amount: 1 });
+        }
+        Order[] memory myOrders = new Order[](1);
+        myOrders[0] = myOrder;
+        // Validate the order
+        consideration.validate(myOrders);
+        // Get the calldata
+        bytes4 fulfillBasicOrderSignature = consideration
+            .fulfillBasicOrder
+            .selector;
+        bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
+            fulfillBasicOrderSignature,
+            _basicOrderParameters
+        );
+
+        if (overwriteTotalRecipientsLength) {
+            assembly {
+                // Get the length from the calldata and store the
+                // length - 1 in the calldata
+                let additionalRecipientsLengthOffset := add(
+                    fulfillBasicOrderCalldata,
+                    0x264
+                )
+                let additionalRecipientsLength := mload(
+                    additionalRecipientsLengthOffset
+                )
+                mstore(
+                    additionalRecipientsLengthOffset,
+                    sub(additionalRecipientsLength, numToSub)
+                )
+            }
+        }
+
+        address considerationAddress = address(consideration);
+        uint256 calldataLength = fulfillBasicOrderCalldata.length;
+        bool success;
+
+        assembly {
+            // Store the function calldata
+            // Call fulfillBasicOrders
+            success := call(
+                gas(),
+                considerationAddress,
+                0,
+                // The fn signature and calldata starts after the
+                // first OneWord bytes, as those initial bytes just
+                // contain the length of fulfillBasicOrderCalldata
+                add(fulfillBasicOrderCalldata, OneWord),
+                calldataLength,
+                // Store output at empty storage location,
+                // identified using "free memory pointer".
+                mload(0x40),
+                OneWord
+            )
+        }
+
+        if (overwriteTotalRecipientsLength) {
+            // Expect a revert if the additional recipients length is too small (e.g. 1 was subtracted).
+            vm.expectRevert();
+        }
+        // If the call fails...
+        if (!success) {
+            // Revert and pass the revert reason along if one was returned.
+            _revertWithReasonIfOneIsReturned();
+
+            // Otherwise, revert with a generic error message.
+            revert();
+        }
+    }
+
+    // Copy-paste of prepareOrder modified for Aspyn test
+    function prepareBasicOrderAndOrderParameters(uint256 tokenId)
+        internal
+        returns (
+            Order memory _order,
+            BasicOrderParameters memory _basicOrderParameters
+        )
+    {
+        test1155_1.mint(address(this), tokenId, 10);
+
+        _configureERC1155OfferItem(tokenId, 10);
+        _configureErc20ConsiderationItem(alice, 10);
+        uint256 nonce = consideration.getNonce(address(this));
+
+        OrderParameters memory _orderParameters = getOrderParameters(
+            payable(this),
+            OrderType.FULL_OPEN
+        );
+        OrderComponents memory _orderComponents = toOrderComponents(
+            _orderParameters,
+            nonce
+        );
+
+        bytes32 orderHash = consideration.getOrderHash(_orderComponents);
+
+        bytes memory _signature = signOrder(consideration, alicePk, orderHash);
+        _order = Order(_orderParameters, _signature);
+        _basicOrderParameters = toBasicOrderParameters(
+            _order,
+            BasicOrderType.ERC20_TO_ERC1155_FULL_OPEN
         );
     }
 

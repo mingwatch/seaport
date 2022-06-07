@@ -23,7 +23,7 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
     bool reentered;
     bool shouldReenter;
 
-    uint256 globalSalt;
+    // uint256 globalSalt;
 
     /**
      * @dev Foundry fuzzes enums as uints, so we need to manually fuzz on uints and use vm.assume
@@ -211,99 +211,99 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
 
     // TODO move out of NonReentrant
     // TODO add comments
-    function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
-        uint256 fuzzTotalRecipients,
-        uint256 numToSub
-    ) public {
-        uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
-        vm.assume(numToSub <= totalRecipients);
-        bool overwriteTotalRecipientsLength = numToSub > 0;
-        currentConsideration = consideration;
-        // Create basic order
-        (
-            Order memory myOrder,
-            BasicOrderParameters memory _basicOrderParameters
-        ) = prepareBasicOrderAndOrderParameters(1);
-        // Add additional recipients
-        _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
-            totalRecipients
-        );
-        for (
-            uint256 i = 0;
-            i < _basicOrderParameters.additionalRecipients.length;
-            i++
-        ) {
-            _basicOrderParameters.additionalRecipients[
-                i
-            ] = AdditionalRecipient({ recipient: alice, amount: 1 });
-        }
-        Order[] memory myOrders = new Order[](1);
-        myOrders[0] = myOrder;
-        // Validate the order
-        consideration.validate(myOrders);
-        // Get the calldata
-        bytes4 fulfillBasicOrderSignature = consideration
-            .fulfillBasicOrder
-            .selector;
-        bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
-            fulfillBasicOrderSignature,
-            _basicOrderParameters
-        );
+    // function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
+    //     uint256 fuzzTotalRecipients,
+    //     uint256 numToSub
+    // ) public {
+    //     uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
+    //     vm.assume(numToSub <= totalRecipients);
+    //     bool overwriteTotalRecipientsLength = numToSub > 0;
+    //     currentConsideration = consideration;
+    //     // Create basic order
+    //     (
+    //         Order memory myOrder,
+    //         BasicOrderParameters memory _basicOrderParameters
+    //     ) = prepareBasicOrderAndOrderParameters(1);
+    //     // Add additional recipients
+    //     _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
+    //         totalRecipients
+    //     );
+    //     for (
+    //         uint256 i = 0;
+    //         i < _basicOrderParameters.additionalRecipients.length;
+    //         i++
+    //     ) {
+    //         _basicOrderParameters.additionalRecipients[
+    //             i
+    //         ] = AdditionalRecipient({ recipient: alice, amount: 1 });
+    //     }
+    //     Order[] memory myOrders = new Order[](1);
+    //     myOrders[0] = myOrder;
+    //     // Validate the order
+    //     consideration.validate(myOrders);
+    //     // Get the calldata
+    //     bytes4 fulfillBasicOrderSignature = consideration
+    //         .fulfillBasicOrder
+    //         .selector;
+    //     bytes memory fulfillBasicOrderCalldata = abi.encodeWithSelector(
+    //         fulfillBasicOrderSignature,
+    //         _basicOrderParameters
+    //     );
 
-        if (overwriteTotalRecipientsLength) {
-            assembly {
-                // Get the length from the calldata and store the
-                // length - 1 in the calldata
-                let additionalRecipientsLengthOffset := add(
-                    fulfillBasicOrderCalldata,
-                    0x264
-                )
-                let additionalRecipientsLength := mload(
-                    additionalRecipientsLengthOffset
-                )
-                mstore(
-                    additionalRecipientsLengthOffset,
-                    sub(additionalRecipientsLength, numToSub)
-                )
-            }
-        }
+    //     if (overwriteTotalRecipientsLength) {
+    //         assembly {
+    //             // Get the length from the calldata and store the
+    //             // length - 1 in the calldata
+    //             let additionalRecipientsLengthOffset := add(
+    //                 fulfillBasicOrderCalldata,
+    //                 0x264
+    //             )
+    //             let additionalRecipientsLength := mload(
+    //                 additionalRecipientsLengthOffset
+    //             )
+    //             mstore(
+    //                 additionalRecipientsLengthOffset,
+    //                 sub(additionalRecipientsLength, numToSub)
+    //             )
+    //         }
+    //     }
 
-        address considerationAddress = address(consideration);
-        uint256 calldataLength = fulfillBasicOrderCalldata.length;
-        bool success;
+    //     address considerationAddress = address(consideration);
+    //     uint256 calldataLength = fulfillBasicOrderCalldata.length;
+    //     bool success;
 
-        assembly {
-            // Store the function calldata
-            // Call fulfillBasicOrders
-            success := call(
-                gas(),
-                considerationAddress,
-                0,
-                // The fn signature and calldata starts after the
-                // first OneWord bytes, as those initial bytes just
-                // contain the length of fulfillBasicOrderCalldata
-                add(fulfillBasicOrderCalldata, OneWord),
-                calldataLength,
-                // Store output at empty storage location,
-                // identified using "free memory pointer".
-                mload(0x40),
-                OneWord
-            )
-        }
+    //     assembly {
+    //         // Store the function calldata
+    //         // Call fulfillBasicOrders
+    //         success := call(
+    //             gas(),
+    //             considerationAddress,
+    //             0,
+    //             // The fn signature and calldata starts after the
+    //             // first OneWord bytes, as those initial bytes just
+    //             // contain the length of fulfillBasicOrderCalldata
+    //             add(fulfillBasicOrderCalldata, OneWord),
+    //             calldataLength,
+    //             // Store output at empty storage location,
+    //             // identified using "free memory pointer".
+    //             mload(0x40),
+    //             OneWord
+    //         )
+    //     }
 
-        if (overwriteTotalRecipientsLength) {
-            // Expect a revert if the additional recipients length is too small (e.g. 1 was subtracted).
-            vm.expectRevert();
-        }
-        // If the call fails...
-        if (!success) {
-            // Revert and pass the revert reason along if one was returned.
-            _revertWithReasonIfOneIsReturned();
+    //     if (overwriteTotalRecipientsLength) {
+    //         // Expect a revert if the additional recipients length is too small (e.g. 1 was subtracted).
+    //         vm.expectRevert();
+    //     }
+    //     // If the call fails...
+    //     if (!success) {
+    //         // Revert and pass the revert reason along if one was returned.
+    //         _revertWithReasonIfOneIsReturned();
 
-            // Otherwise, revert with a generic error message.
-            revert();
-        }
-    }
+    //         // Otherwise, revert with a generic error message.
+    //         revert();
+    //     }
+    // }
 
     // Copy-paste of prepareOrder modified for Aspyn test
     function prepareBasicOrderAndOrderParameters(uint256 tokenId)
@@ -358,25 +358,25 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         }
     }
 
-    function getOrderParameters(address payable offerer, OrderType orderType)
-        internal
-        returns (OrderParameters memory)
-    {
-        return
-            OrderParameters(
-                offerer,
-                address(0),
-                offerItems,
-                considerationItems,
-                orderType,
-                block.timestamp,
-                block.timestamp + 1,
-                bytes32(0),
-                globalSalt++,
-                bytes32(0),
-                considerationItems.length
-            );
-    }
+    // function getOrderParameters(address payable offerer, OrderType orderType)
+    //     internal
+    //     returns (OrderParameters memory)
+    // {
+    //     return
+    //         OrderParameters(
+    //             offerer,
+    //             address(0),
+    //             offerItems,
+    //             considerationItems,
+    //             orderType,
+    //             block.timestamp,
+    //             block.timestamp + 1,
+    //             bytes32(0),
+    //             globalSalt++,
+    //             bytes32(0),
+    //             considerationItems.length
+    //         );
+    // }
 
     function prepareBasicOrder(uint256 tokenId)
         internal
@@ -509,81 +509,81 @@ contract NonReentrantTest is BaseOrderTest, LowLevelHelpers {
         fulfillerConduitKey = bytes32(0);
     }
 
-    function toOrderComponents(OrderParameters memory _params, uint256 counter)
-        internal
-        pure
-        returns (OrderComponents memory)
-    {
-        return
-            OrderComponents(
-                _params.offerer,
-                _params.zone,
-                _params.offer,
-                _params.consideration,
-                _params.orderType,
-                _params.startTime,
-                _params.endTime,
-                _params.zoneHash,
-                _params.salt,
-                _params.conduitKey,
-                counter
-            );
-    }
+    // function toOrderComponents(OrderParameters memory _params, uint256 nonce)
+    //     internal
+    //     pure
+    //     returns (OrderComponents memory)
+    // {
+    //     return
+    //         OrderComponents(
+    //             _params.offerer,
+    //             _params.zone,
+    //             _params.offer,
+    //             _params.consideration,
+    //             _params.orderType,
+    //             _params.startTime,
+    //             _params.endTime,
+    //             _params.zoneHash,
+    //             _params.salt,
+    //             _params.conduitKey,
+    //             nonce
+    //         );
+    // }
 
-    function toBasicOrderParameters(
-        Order memory _order,
-        BasicOrderType basicOrderType
-    ) internal pure returns (BasicOrderParameters memory) {
-        return
-            BasicOrderParameters(
-                _order.parameters.consideration[0].token,
-                _order.parameters.consideration[0].identifierOrCriteria,
-                _order.parameters.consideration[0].endAmount,
-                payable(_order.parameters.offerer),
-                _order.parameters.zone,
-                _order.parameters.offer[0].token,
-                _order.parameters.offer[0].identifierOrCriteria,
-                _order.parameters.offer[0].endAmount,
-                basicOrderType,
-                _order.parameters.startTime,
-                _order.parameters.endTime,
-                _order.parameters.zoneHash,
-                _order.parameters.salt,
-                _order.parameters.conduitKey,
-                _order.parameters.conduitKey,
-                0,
-                new AdditionalRecipient[](0),
-                _order.signature
-            );
-    }
+    // function toBasicOrderParameters(
+    //     Order memory _order,
+    //     BasicOrderType basicOrderType
+    // ) internal pure returns (BasicOrderParameters memory) {
+    //     return
+    //         BasicOrderParameters(
+    //             _order.parameters.consideration[0].token,
+    //             _order.parameters.consideration[0].identifierOrCriteria,
+    //             _order.parameters.consideration[0].endAmount,
+    //             payable(_order.parameters.offerer),
+    //             _order.parameters.zone,
+    //             _order.parameters.offer[0].token,
+    //             _order.parameters.offer[0].identifierOrCriteria,
+    //             _order.parameters.offer[0].endAmount,
+    //             basicOrderType,
+    //             _order.parameters.startTime,
+    //             _order.parameters.endTime,
+    //             _order.parameters.zoneHash,
+    //             _order.parameters.salt,
+    //             _order.parameters.conduitKey,
+    //             _order.parameters.conduitKey,
+    //             0,
+    //             new AdditionalRecipient[](0),
+    //             _order.signature
+    //         );
+    // }
 
-    function toBasicOrderParameters(
-        OrderComponents memory _order,
-        BasicOrderType basicOrderType,
-        bytes memory signature
-    ) internal pure returns (BasicOrderParameters memory) {
-        return
-            BasicOrderParameters(
-                _order.consideration[0].token,
-                _order.consideration[0].identifierOrCriteria,
-                _order.consideration[0].endAmount,
-                payable(_order.offerer),
-                _order.zone,
-                _order.offer[0].token,
-                _order.offer[0].identifierOrCriteria,
-                _order.offer[0].endAmount,
-                basicOrderType,
-                _order.startTime,
-                _order.endTime,
-                _order.zoneHash,
-                _order.salt,
-                _order.conduitKey,
-                _order.conduitKey,
-                0,
-                new AdditionalRecipient[](0),
-                signature
-            );
-    }
+    // function toBasicOrderParameters(
+    //     OrderComponents memory _order,
+    //     BasicOrderType basicOrderType,
+    //     bytes memory signature
+    // ) internal pure returns (BasicOrderParameters memory) {
+    //     return
+    //         BasicOrderParameters(
+    //             _order.consideration[0].token,
+    //             _order.consideration[0].identifierOrCriteria,
+    //             _order.consideration[0].endAmount,
+    //             payable(_order.offerer),
+    //             _order.zone,
+    //             _order.offer[0].token,
+    //             _order.offer[0].identifierOrCriteria,
+    //             _order.offer[0].endAmount,
+    //             basicOrderType,
+    //             _order.startTime,
+    //             _order.endTime,
+    //             _order.zoneHash,
+    //             _order.salt,
+    //             _order.conduitKey,
+    //             _order.conduitKey,
+    //             0,
+    //             new AdditionalRecipient[](0),
+    //             signature
+    //         );
+    // }
 
     function prepareAvailableOrders(uint256 tokenId)
         internal
