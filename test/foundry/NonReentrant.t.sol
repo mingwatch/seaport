@@ -222,26 +222,6 @@ contract NonReentrantTest is BaseOrderTest {
         }
     }
 
-    // function getOrderParameters(address payable offerer, OrderType orderType)
-    //     internal
-    //     returns (OrderParameters memory)
-    // {
-    //     return
-    //         OrderParameters(
-    //             offerer,
-    //             address(0),
-    //             offerItems,
-    //             considerationItems,
-    //             orderType,
-    //             block.timestamp,
-    //             block.timestamp + 1,
-    //             bytes32(0),
-    //             globalSalt++,
-    //             bytes32(0),
-    //             considerationItems.length
-    //         );
-    // }
-
     function prepareBasicOrder(uint256 tokenId)
         internal
         returns (BasicOrderParameters memory _basicOrderParameters)
