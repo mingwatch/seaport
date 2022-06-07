@@ -123,11 +123,13 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
     }
 
     function testFulfillBasicOrderRevertInvalidAdditionalRecipientsLength(
-        uint256 totalRecipients,
-        uint256 amountToSubtractFromTotalRecipients
+        uint256 amountToSubtractFromTotalRecipients,
+        AdditionalRecipient[] memory additionalRecipients
     ) public {
-        vm.assume(totalRecipients >= 0 && totalRecipients <= 200);
-        vm.assume(amountToSubtractFromTotalRecipients <= totalRecipients);
+        vm.assume(additionalRecipients.length <= 200);
+        vm.assume(
+            amountToSubtractFromTotalRecipients <= additionalRecipients.length
+        );
         bool overwriteTotalRecipientsLength = amountToSubtractFromTotalRecipients >
                 0;
 
@@ -138,17 +140,13 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         ) = prepareBasicOrderAndOrderParameters(1);
 
         // Add additional recipients
-        _basicOrderParameters.additionalRecipients = new AdditionalRecipient[](
-            totalRecipients
-        );
+        _basicOrderParameters.additionalRecipients = additionalRecipients;
         for (
             uint256 i = 0;
             i < _basicOrderParameters.additionalRecipients.length;
             i++
         ) {
-            _basicOrderParameters.additionalRecipients[
-                i
-            ] = AdditionalRecipient({ recipient: alice, amount: 1 });
+            _basicOrderParameters.additionalRecipients[i].amount = 1;
         }
 
         // Validate the order.
