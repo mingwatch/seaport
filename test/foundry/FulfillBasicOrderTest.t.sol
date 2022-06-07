@@ -126,7 +126,6 @@ contract FulfillBasicOrderTest is BaseOrderTest, LowLevelHelpers {
         uint256 totalRecipients,
         uint256 amountToSubtractFromTotalRecipients
     ) public {
-        // uint256 totalRecipients = (fuzzTotalRecipients % 200) + 1;
         vm.assume(totalRecipients >= 0 && totalRecipients <= 200);
         vm.assume(amountToSubtractFromTotalRecipients <= totalRecipients);
         bool overwriteTotalRecipientsLength = amountToSubtractFromTotalRecipients >
